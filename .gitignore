@@ -1,0 +1,33 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Bb]uild/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+*.csproj.iml
+
+# NuGet packages
+*.nupkg
+*.snupkg
+.nupkg.metadata
+.nuspec
+packages/
+.nuget/
+
+# User-specific files
+*.user
+*.userprefs
+*.suo
+*.csproj.user
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+*.vs/
