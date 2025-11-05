@@ -21,7 +21,10 @@ namespace EntropyForge
         // For mouse sampling
         private DateTime lastMouseSample = DateTime.MinValue;
         private const int MouseMinIntervalMs = 5;
-        
+
+        // New: flag indicating whether at least one mouse sample has been collected
+        private bool mouseSampleCollected = false;
+
         // Character sets
         private const string LOWER = "abcdefghijklmnopqrstuvwxyz"; // lowercase
         private const string UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // uppercase
@@ -58,6 +61,9 @@ namespace EntropyForge
             // Buttons
             btnGenerate = new Button { Text = "Generate", Location = new Point(250, 60), Width = 170 };
             btnGenerate.Click += BtnGenerate_Click;
+
+            // Initially disable generate until user provides mouse entropy
+            btnGenerate.Enabled = false;
 
             btnCopy = new Button { Text = "Copy", Location = new Point(440, 60), Width = 100 };
             btnCopy.Click += BtnCopy_Click;
@@ -100,6 +106,17 @@ namespace EntropyForge
             {
                 entropyPool = new byte[32]; // 256-bit zeroed digest
                 entropyBitsEstimate = 0;    // reset entropy estimate
+                mouseSampleCollected = false; // require new mouse movement
+            }
+
+            // Disable the generate button until user moves mouse again
+            if (InvokeRequired)
+            {
+                Invoke((Action)(() => btnGenerate.Enabled = false));
+            }
+            else
+            {
+                btnGenerate.Enabled = false;
             }
         }
 
@@ -145,6 +162,19 @@ namespace EntropyForge
                 // Conservative entropy estimate
                 entropyBitsEstimate += 2;
                 if (entropyBitsEstimate > 256) entropyBitsEstimate = 256;
+
+                // Mark that we have collected at least one mouse sample
+                mouseSampleCollected = true;
+            }
+
+            // Enable Generate button now that we have at least one mouse sample
+            if (InvokeRequired)
+            {
+                Invoke((Action)(() => btnGenerate.Enabled = true));
+            }
+            else
+            {
+                btnGenerate.Enabled = true;
             }
 
             UpdateEntropyUI();
@@ -166,6 +196,16 @@ namespace EntropyForge
 
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
+            // Extra guard: do not generate if no mouse entropy was collected
+            lock (entropyLock)
+            {
+                if (!mouseSampleCollected)
+                {
+                    MessageBox.Show("Please move the mouse over the form to collect entropy before generating a password.", "Not enough entropy", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
             // Build allowed character set
             StringBuilder charSetBuilder = new StringBuilder();
             if (cbLower.Checked) charSetBuilder.Append(LOWER);
@@ -289,6 +329,7 @@ namespace EntropyForge
             {
                 if (entropyPool != null) Array.Clear(entropyPool, 0, entropyPool.Length);
                 entropyBitsEstimate = 0;
+                mouseSampleCollected = false;
             }
             base.OnFormClosing(e);
         }
