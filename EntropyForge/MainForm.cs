@@ -5,7 +5,7 @@ namespace EntropyForge
 {
     public partial class MainForm : Form
     {
-        // UI controls / Элементы интерфейса
+        // UI controls
         private CheckBox cbLower, cbUpper, cbDigits, cbSymbols, cbAmbiguous;
         private NumericUpDown nudLength;
         private Button btnGenerate, btnClearEntropy, btnCopy;
@@ -13,33 +13,33 @@ namespace EntropyForge
         private ProgressBar pbEntropy;
         private Label lblEntropy, lblHint;
 
-        // Entropy pool (internal) / Внутренний пул энтропии
-        private byte[] entropyPool; // current SHA256 digest of pool / текущий SHA256-хэш пула
-        private int entropyBitsEstimate; // rough estimate (0..256) / приблизительная оценка бит энтропии
-        private object entropyLock = new object(); // lock for thread safety / блокировка для потокобезопасности
+        // Entropy pool (internal)
+        private byte[] entropyPool; // current SHA256 digest of pool
+        private int entropyBitsEstimate; // rough estimate (0..256)
+        private object entropyLock = new object(); // lock for thread safety
 
-        // For mouse sampling / Для сбора энтропии с мыши
+        // For mouse sampling
         private DateTime lastMouseSample = DateTime.MinValue;
-        private const int MouseMinIntervalMs = 5; // минимальный интервал между событиями мыши (ms)
-
-        // Character sets / Наборы символов
-        private const string LOWER = "abcdefghijklmnopqrstuvwxyz"; // lowercase / строчные
-        private const string UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // uppercase / заглавные
-        private const string DIGITS = "0123456789"; // digits / цифры
-        private const string SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>/?"; // symbols / спецсимволы
-        private const string AMBIGUOUS = "Il1O0"; // ambiguous / похожие символы
+        private const int MouseMinIntervalMs = 5;
+        
+        // Character sets
+        private const string LOWER = "abcdefghijklmnopqrstuvwxyz"; // lowercase
+        private const string UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // uppercase
+        private const string DIGITS = "0123456789"; // digits
+        private const string SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>/?"; // symbols
+        private const string AMBIGUOUS = "Il1O0"; // ambiguous
 
         public MainForm()
         {
-            // Set up window / Настройка окна
-            Text = "Password Generator — Mouse Entropy + System RNG";
+            // Set up window
+            Text = "Password Generator вЂ“ Mouse Entropy + System RNG";
             Size = new Size(700, 320);
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-            InitializeComponents(); // initialize UI / инициализация интерфейса
-            ResetEntropyPool();     // reset entropy / сброс пула энтропии
+            InitializeComponents(); // initialize UI
+            ResetEntropyPool();     // reset entropy
         }
 
         private void InitializeComponents()
@@ -83,9 +83,9 @@ namespace EntropyForge
             // Add controls to form
             Controls.AddRange(new Control[]
             {
-        cbLower, cbUpper, cbDigits, cbSymbols, cbAmbiguous,
-        lblLen, nudLength, btnGenerate, btnCopy, btnClearEntropy,
-        tbPassword, lblEntropy, pbEntropy, lblHint
+                cbLower, cbUpper, cbDigits, cbSymbols, cbAmbiguous,
+                lblLen, nudLength, btnGenerate, btnCopy, btnClearEntropy,
+                tbPassword, lblEntropy, pbEntropy, lblHint
             });
 
             // Mouse move handler on the whole form
@@ -98,25 +98,25 @@ namespace EntropyForge
         {
             lock (entropyLock)
             {
-                entropyPool = new byte[32]; // 256-bit zeroed digest / нулевой 256-битный хэш
-                entropyBitsEstimate = 0;    // reset entropy estimate / сброс оценки энтропии
+                entropyPool = new byte[32]; // 256-bit zeroed digest
+                entropyBitsEstimate = 0;    // reset entropy estimate
             }
         }
 
         /// <summary>
-        /// Mouse move sampling / Сбор энтропии с движения мыши
+        /// Mouse move sampling
         /// Each event: mix (x,y,ticks) into SHA256(pool || data).
         /// Conservative estimate: +1..4 bits per sample (limited to 256 bits)
         /// </summary>
         private void MainForm_MouseMove(object sender, MouseEventArgs e)
         {
-            // Throttle sampling / Ограничение частоты
+            // Throttle sampling
             var now = DateTime.UtcNow;
             if (lastMouseSample != DateTime.MinValue && (now - lastMouseSample).TotalMilliseconds < MouseMinIntervalMs)
                 return;
             lastMouseSample = now;
 
-            // Data blob / Формируем данные (x,y,ticks)
+            // Data blob (x,y,ticks)
             long ticks = DateTime.UtcNow.Ticks;
             int x = e.X;
             int y = e.Y;
@@ -129,7 +129,7 @@ namespace EntropyForge
             Array.Copy(BitConverter.GetBytes(DateTime.Now.Millisecond), 0, data, 16, 4);
             Array.Copy(BitConverter.GetBytes((int)Environment.TickCount), 0, data, 20, 4);
 
-            // Mix into entropyPool via SHA256(pool || data) / Смешиваем с текущим пулом
+            // Mix into entropyPool via SHA256(pool || data)
             lock (entropyLock)
             {
                 using (var sha = SHA256.Create())
@@ -138,11 +138,11 @@ namespace EntropyForge
                     Buffer.BlockCopy(entropyPool, 0, concat, 0, entropyPool.Length);
                     Buffer.BlockCopy(data, 0, concat, entropyPool.Length, data.Length);
                     byte[] newPool = sha.ComputeHash(concat);
-                    Array.Clear(concat, 0, concat.Length); // clear temporary buffer / очистка памяти
+                    Array.Clear(concat, 0, concat.Length); // clear temporary buffer
                     entropyPool = newPool;
                 }
 
-                // Conservative entropy estimate / Консервативная оценка энтропии
+                // Conservative entropy estimate
                 entropyBitsEstimate += 2;
                 if (entropyBitsEstimate > 256) entropyBitsEstimate = 256;
             }
@@ -154,7 +154,7 @@ namespace EntropyForge
         {
             if (InvokeRequired)
             {
-                Invoke((Action)UpdateEntropyUI); // ensure UI thread / вызов в UI-потоке
+                Invoke((Action)UpdateEntropyUI); // ensure UI thread
                 return;
             }
             lock (entropyLock)
@@ -166,7 +166,7 @@ namespace EntropyForge
 
         private void BtnGenerate_Click(object sender, EventArgs e)
         {
-            // Build allowed character set / Собираем набор допустимых символов
+            // Build allowed character set
             StringBuilder charSetBuilder = new StringBuilder();
             if (cbLower.Checked) charSetBuilder.Append(LOWER);
             if (cbUpper.Checked) charSetBuilder.Append(UPPER);
@@ -182,14 +182,14 @@ namespace EntropyForge
 
             if (cbAmbiguous.Checked)
             {
-                // remove ambiguous characters / удаляем похожие символы
+                // remove ambiguous characters
                 foreach (char c in AMBIGUOUS)
                     charset = charset.Replace(c.ToString(), "");
             }
 
             int length = (int)nudLength.Value;
 
-            // Mix entropyPool with system RNG bytes / смешиваем с системным RNG
+            // Mix entropyPool with system RNG bytes
             byte[] systemBytes = new byte[32];
             RandomNumberGenerator.Fill(systemBytes);
 
@@ -201,14 +201,14 @@ namespace EntropyForge
                     byte[] concat = new byte[entropyPool.Length + systemBytes.Length];
                     Buffer.BlockCopy(entropyPool, 0, concat, 0, entropyPool.Length);
                     Buffer.BlockCopy(systemBytes, 0, concat, entropyPool.Length, systemBytes.Length);
-                    seed = sha.ComputeHash(concat); // final seed / итоговый сид
+                    seed = sha.ComputeHash(concat); // final seed
                     Array.Clear(concat, 0, concat.Length);
                 }
             }
             Array.Clear(systemBytes, 0, systemBytes.Length);
 
-            // Counter-based SHA256 stream to produce enough random bytes / Генерация потока случайных байт
-            int neededBytes = length * 4; // extra margin / с запасом
+            // Counter-based SHA256 stream to produce enough random bytes
+            int neededBytes = length * 4; // extra margin
             byte[] rndStream = new byte[neededBytes];
             int counter = 0;
             using (var sha = SHA256.Create())
@@ -229,16 +229,16 @@ namespace EntropyForge
                 }
             }
 
-            // Convert rndStream into password using unbiased selection / Преобразуем байты в пароль без смещения
+            // Convert rndStream into password using unbiased selection
             string password = BuildPasswordFromRandomBytes(rndStream, charset, length);
 
-            // Clear sensitive buffers / Очистка памяти
+            // Clear sensitive buffers
             Array.Clear(seed, 0, seed.Length);
             Array.Clear(rndStream, 0, rndStream.Length);
 
             tbPassword.Text = password;
 
-            // Optionally: increase entropy estimate / Дополнительно повышаем оценку энтропии
+            // Optionally: increase entropy estimate
             lock (entropyLock)
             {
                 entropyBitsEstimate = Math.Min(256, entropyBitsEstimate + 16);
@@ -248,7 +248,7 @@ namespace EntropyForge
 
         private string BuildPasswordFromRandomBytes(byte[] rnd, string charset, int length)
         {
-            // Use rejection sampling to avoid modulo bias / Отбрасываем неподходящие значения для равномерности
+            // Use rejection sampling to avoid modulo bias
             int n = charset.Length;
             StringBuilder sb = new StringBuilder(length);
             int needed = length;
@@ -282,7 +282,7 @@ namespace EntropyForge
             }
         }
 
-        // Clean up sensitive buffers on close / Очистка памяти при закрытии формы
+        // Clean up sensitive buffers on close
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             lock (entropyLock)
